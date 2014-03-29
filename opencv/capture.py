@@ -7,6 +7,9 @@ import cv2
 # Laptop webcam is '0', and our usb camera is probably '1'
 # IF THIS DOESNT WORK TRY ANOTHER NUMBER :)
 webcam = cv2.VideoCapture(1)
+# VGA resolution
+webcam.set(cv2.cv.CV_CAP_PROP_FRAME_WIDTH,640)
+webcam.set(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT,480)
 
 rval, frame = webcam.read()
 if not rval:
