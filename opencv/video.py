@@ -8,9 +8,11 @@ import cv2, datetime
 webcam = cv2.VideoCapture(1)
 
 # get some basic info about the camera
-width  = webcam.get(cv2.cv.CV_CAP_PROP_FRAME_WIDTH)
-height = webcam.get(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT)
-print "Webcam width: ", width, " height: ", height
+#width  = webcam.get(cv2.cv.CV_CAP_PROP_FRAME_WIDTH)
+#height = webcam.get(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT)
+#print "Webcam width: ", width, " height: ", height
+webcam.set(cv2.cv.CV_CAP_PROP_FRAME_WIDTH,640)
+webcam.set(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT,480)
 
 start = datetime.datetime.now()
 
@@ -26,5 +28,6 @@ for i in range(100):
 
 end = datetime.datetime.now()
 diff = end - start
-# I'm getting about 9.9 seconds for 100 frames on my macbook
+# I'm getting about 9.9 seconds for 100 frames on my macbook for full res
+# And 3.3 seconds for VGA resolution (640, 480)
 print "100 runs in", diff.seconds + diff.microseconds*1E-6, "seconds"
