@@ -5,12 +5,15 @@ import datetime
 import glob
 import time
 
-VID_FILE = True
+VID_FILE = False
+
+VGA_W = 640
+VGA_H = 480
 
 # Run at VGA resolution
 webcam = cv2.VideoCapture(0)
-webcam.set(cv2.cv.CV_CAP_PROP_FRAME_WIDTH,640)
-webcam.set(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT,480)
+webcam.set(cv2.cv.CV_CAP_PROP_FRAME_WIDTH,VGA_W)
+webcam.set(cv2.cv.CV_CAP_PROP_FRAME_HEIGHT,VGA_H)
 
 # output window
 cv2.namedWindow('foo')
@@ -75,23 +78,28 @@ while True:
         M = cv2.moments(cnt)
         #print M
         
-        max_area = 0
-        # Find the largest BLOB
-        for ind, blb in enumerate(contours):
-            area = cv2.contourArea(blb)
-            if area > max_area  :
-                max_area = area
-                max_index = ind
+        # Get the size of each blob, then sort them by size. This sets the lower
+        # bound on the acceptable blob size.
+        blobs_with_sizes = [(cv2.contourArea(blob), blob) for blob in contours]
+        sorted_blobs = sorted(blobs_with_sizes, key = lambda tup: tup[0], reverse=True)
         
-        #print area
-        big_blob = contours[max_index]
+        good_blobs = []
         
-        (x,y),radius = cv2.minEnclosingCircle(big_blob)
-        center = (int(x),int(y))
-        radius = int(radius)
-        cv2.circle(img,center,radius,(0,255,0),2)      
-        print center
+        # Only look at the first few blobs...
+        for size, blob in sorted_blobs[:5]:
+            (x,y),radius = cv2.minEnclosingCircle(blob)
+            center = (int(x),int(y))
+            radius = int(radius)
+            
+            if (2*radius) < ( 0.5 * VGA_W ):
+                good_blobs.append((size, blob, center, radius))
+                cv2.circle(img,center,radius,(0,255,0),2)      
+                
+        best_size, best_blob, best_center, best_radius = good_blobs[0]
+        print best_center
+        
     except Exception, e:
+        #raise
         print 'NOPE', e
 
 
