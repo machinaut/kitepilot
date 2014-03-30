@@ -1,4 +1,5 @@
 #define POWER_SAVE_BS 1
+#define UNCALIBRATE 1
 
 const int led = 4; // onboard debug LED
 int ledState = LOW; // current LED state
@@ -27,9 +28,9 @@ long goalp = 0;
 long usec_per_step = 0; // 0 is special and means stop
 long goal_ups = 0; // current goal
 const long max_ups = 1700; // min speed before stopping
-const long min_ups = 500; // max speed
+const long min_ups = 600; // max speed
 const long usec_per_ups = 200; // "acceleration?" (usec / (usec/step))
-const long usec_per_ctrl = 50000; // control rate for serial i/o etc
+const long usec_per_ctrl = 20000; // control rate for serial i/o etc
 const long close_pos = 150;
 const long pwr_timeout = 500000; // power save timeout
 long pwr_time_start = 0;
@@ -47,6 +48,14 @@ void calibrate() {
   got1 = false;
 
   pos = 0; // wherever we start, that's 0
+  
+  if(UNCALIBRATE) {
+    // assume center
+    got1 = true;
+    stop1Pos = 1000;
+    stop2Pos = -1000;
+    return;
+  }
 
   digitalWrite(dirPin, HIGH);
   stop1 = !digitalRead(stop1Pin);
@@ -253,32 +262,34 @@ void loop() {
   }
   
   // emergency stop!
-  if(!digitalRead(stop1Pin)) {
-    long slip = pos-stop1Pos;
-    if(got1 && slip < 0 || !got1 && slip > 0) {
-      Serial.print("Hit STOP1, slip=");
-      Serial.println(slip);
-      // correct slip
-      pos -= slip;
+  if(!UNCALIBRATE) {
+    if(!digitalRead(stop1Pin)) {
+      long slip = pos-stop1Pos;
+      if(got1 && slip < 0 || !got1 && slip > 0) {
+        Serial.print("Hit STOP1, slip=");
+        Serial.println(slip);
+        // correct slip
+        pos -= slip;
+      }
+      
+      // disallow movement in bad direction
+      if(got1 && usec_per_step > 0 || !got1 && usec_per_step < 0) {
+        usec_per_step = 0;
+      }
     }
-    
-    // disallow movement in bad direction
-    if(got1 && usec_per_step > 0 || !got1 && usec_per_step < 0) {
-      usec_per_step = 0;
-    }
-  }
-  if(!digitalRead(stop2Pin)) {
-    long slip = pos-stop2Pos;
-    if(got1 && slip > 0 || !got1 && slip < 0) {
-      Serial.print("Hit STOP2, slip=");
-      Serial.println(slip);
-      // correct slip
-      pos -= slip;
-    }
-    
-    // disallow movement in bad direction
-    if(got1 && usec_per_step < 0 || !got1 && usec_per_step > 0) {
-      usec_per_step = 0;
+    if(!digitalRead(stop2Pin)) {
+      long slip = pos-stop2Pos;
+      if(got1 && slip > 0 || !got1 && slip < 0) {
+        Serial.print("Hit STOP2, slip=");
+        Serial.println(slip);
+        // correct slip
+        pos -= slip;
+      }
+      
+      // disallow movement in bad direction
+      if(got1 && usec_per_step < 0 || !got1 && usec_per_step > 0) {
+        usec_per_step = 0;
+      }
     }
   }
   
