@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 import datetime
 import glob
+import time
 
 VID_FILE = True
 
@@ -16,7 +17,7 @@ cv2.namedWindow('foo')
 
 # testing with a green iPhone 5c
 color_min = np.array([50,60,60], np.uint8)
-color_max = np.array([70,255,255], np.uint8)
+color_max = np.array([65,255,255], np.uint8)
 
 # Open a Video File??????
 if VID_FILE:
@@ -37,6 +38,8 @@ while True:
     # capture image from camera
     if VID_FILE:
         rv, img = cap.read()
+        if cv2.waitKey(1) & 0xFF == ord('d'):
+            break
     else:
         rv, img = webcam.read()
 
