@@ -4,6 +4,7 @@ import numpy as np
 import datetime
 import glob
 import time
+from collections import deque
 
 VID_FILE = False
 
@@ -29,6 +30,9 @@ if VID_FILE:
 
 # Measure time for science!
 past = datetime.datetime.now()
+
+# Path History
+blob_hist = deque([])
 
 # loop until forever
 while True:
@@ -96,7 +100,20 @@ while True:
                 cv2.circle(img,center,radius,(0,255,0),2)      
                 
         best_size, best_blob, best_center, best_radius = good_blobs[0]
-        print best_center
+        
+        # Calculate our motion vector!!
+        try:
+            motion = best_center - blob_hist[-1]
+            print motion
+        except:
+            print "First loop... No object history"
+
+        # Add the best point to the history
+        blob_hist.append(best_center)
+        if len(blob_hist) > 10:
+            blob_hist.popleft()
+        
+        print blob_hist
         
     except Exception, e:
         #raise
