@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # fly.py - try to simulate flying
 import pygame, math
+from random import randint
 
 pygame.init()
 # make sure we run at most at a specific FPS
@@ -33,10 +34,9 @@ def tocent():
     return math.degrees(math.atan2(center[1]-y,center[0]-x))
 
 # approx turn rate
-turn = 14.0
+turn = 7.0
 
-angle_thresh = 15.0
-center_thresh = 10
+center_thresh = 50
 
 ## states:
 ## 0 upper right, aim down (cw)
@@ -53,32 +53,38 @@ def next_state(state, x, y, angle):
     
     if state == 0: # turn right
         angle_err = -90. - angle #don't normalize, we want the quadrant kink
-        if y < center[1] and abs(angle_err) < angle_thresh:
+        if y < center[1] and angle < 0:
             next = 1
+            
     elif state == 1: #back to center
         angle_err = norm(tocent() - angle)
         if abs(y - center[1]) < center_thresh and abs(x - center[0]) < center_thresh:
             next = 2
+            
     elif state == 2: #away from center left
-        angle_err = norm(-135 - angle)
-        if x < (center[0] - width * .14):
+        angle_err = norm(135 - angle)
+        if x < (center[0] - width * .1) and y > center[1]:
             next = 3
+            
     elif state == 3: #turn left
         if angle > 0:
             temp_angle = angle - 360 #move the quadrant kink over
         else:
             temp_angle = angle
         angle_err = -90. - temp_angle #don't normalize, we want the quadrant kink
-        if y < center[1] and abs(angle_err) < angle_thresh:
+        if y < center[1] and angle < 0:
             next = 4
+            
     elif state == 4: #back to center
         angle_err = norm(tocent() - angle)
         if abs(y - center[1]) < center_thresh and abs(x - center[0]) < center_thresh:
             next = 5
+            
     elif state == 5: #away from center right
         angle_err = norm(45 - angle)
-        if x > (center[0] - width * .14):
+        if x > (center[0] - width * .1) and y > center[1]:
             next = 0
+            
     else:
         next_state = 0
         goal_angle = -90
@@ -86,6 +92,7 @@ def next_state(state, x, y, angle):
     return (next, angle_err)
     
 state = 0
+
 
 # loop until forever. goddamn robots.
 while True:
@@ -99,6 +106,9 @@ while True:
         angle = angle + turn
     else:
         angle = angle - turn
+        
+    angle = angle + randint(-10,10)
+    angle = norm(angle)
 
     # draw the sky
     surface.fill(sky)
@@ -107,4 +117,4 @@ while True:
     pygame.draw.circle(surface, grn, (x, 720-y), 44, 0)
     pygame.display.update()
     
-    print state, x, y, angle, err, tocent()
+    print state, x-center[0], y-center[1], angle, err, tocent()
