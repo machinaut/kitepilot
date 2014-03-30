@@ -32,7 +32,7 @@ if VID_FILE:
 past = datetime.datetime.now()
 
 # Path History
-blob_hist = deque([])
+blob_hist = deque([(0, 0)])
 
 # loop until forever
 while True:
@@ -75,11 +75,11 @@ while True:
     
     #print contours
     try:
-        cnt = contours[0]
+        #trycnt = coddntours[0]
         #cv2.drawContours(thresh, [cnt], 0, (0,255,0), -1)
         #print cnt
         
-        M = cv2.moments(cnt)
+        #M = cv2.moments(cnt)
         #print M
         
         # Get the size of each blob, then sort them by size. This sets the lower
@@ -95,7 +95,7 @@ while True:
             center = (int(x),int(y))
             radius = int(radius)
             
-            if (2*radius) < ( 0.5 * VGA_W ):
+            if (2 * radius) < (0.5 * VGA_W):
                 good_blobs.append((size, blob, center, radius))
                 cv2.circle(img,center,radius,(0,255,0),2)      
                 
@@ -105,13 +105,21 @@ while True:
         try:
             motion = best_center - blob_hist[-1]
             print motion
-        except:
+        except Exception, e:
+            print e
             print "First loop... No object history"
-
+        
+       
         # Add the best point to the history
         blob_hist.append(best_center)
-        if len(blob_hist) > 10:
+        # Limit the length of the history!!
+        if len(blob_hist) > 100:
             blob_hist.popleft()
+
+        # Draw a line to connect the last point to this point... 
+        # Aka Lets do a line!!!!!
+        for index in range(len(blob_hist)):
+            cv2.line(img, blob_hist[index-1], blob_hist[index], (255, 0, 0))
         
         print blob_hist
         
