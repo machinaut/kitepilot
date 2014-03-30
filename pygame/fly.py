@@ -2,6 +2,19 @@
 # fly.py - try to simulate flying
 import pygame, math
 from random import randint
+import serial
+from time import sleep
+ser = serial.Serial('COM7', 9600)
+
+#wait for arduino to reset
+sleep(2)
+
+#send a newline to tell arduino to start
+ser.write('\n')
+    
+#wait for GO (calibration done)
+while "GO" not in ser.readline():
+    pass
 
 pygame.init()
 # make sure we run at most at a specific FPS
@@ -15,14 +28,14 @@ def norm(x):
 surface = pygame.display.set_mode((1280,720))
 # Target path center and width
 # TODO: this gets processed by a "pre-flight"
-center = (1280/2, 520)
+center = (1280/2, 400)
 width  = 500.0
 
 sky = pygame.Color(50,242,255)
 grn = pygame.Color(0,174,17)
 
 # wind velocity - approx gain on travel speed
-wind = 10.0
+wind = 5.0
 # angle of attack of the kite, basically it's "state"
 angle = 45 # degrees CCW of "right" along the horizon
 # position, starts in the center
@@ -34,7 +47,7 @@ def tocent():
     return math.degrees(math.atan2(center[1]-y,center[0]-x))
 
 # approx turn rate
-turn = 7.0
+turn = 3.0
 
 center_thresh = 50
 
@@ -93,6 +106,8 @@ def next_state(state, x, y, angle):
     
 state = 0
 
+ser_delay = 6 # update serial 10fps
+ser_count = 0
 
 # loop until forever. goddamn robots.
 while True:
@@ -107,8 +122,16 @@ while True:
     else:
         angle = angle - turn
         
-    angle = angle + randint(-10,10)
+    angle = angle + randint(-5,5)
     angle = norm(angle)
+    
+    if ser_count > ser_delay:
+        pos = str(int((err/180.)*512.+512.))
+        ser.write(pos + '\n')
+        print pos
+        ser_count = 0
+    else:
+        ser_count = ser_count + 1
 
     # draw the sky
     surface.fill(sky)
@@ -117,4 +140,4 @@ while True:
     pygame.draw.circle(surface, grn, (x, 720-y), 44, 0)
     pygame.display.update()
     
-    print state, x-center[0], y-center[1], angle, err, tocent()
+    #print state, x-center[0], y-center[1], angle, err, tocent()
