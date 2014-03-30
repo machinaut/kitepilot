@@ -128,7 +128,7 @@ while True:
     if ser_count > ser_delay:
         pos = str(int((err/180.)*512.+512.))
         ser.write(pos + '\n')
-        print pos
+        print pos, err
         ser_count = 0
     else:
         ser_count = ser_count + 1
