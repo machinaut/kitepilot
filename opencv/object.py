@@ -1,16 +1,29 @@
 #!/usr/bin/env python
+import sys
 import cv2
 import numpy as np
 import datetime
 import glob
 import time
 from collections import deque
+from math import sqrt, atan2, degrees
+
+def vec(a, b):
+    return (a[0]-b[0], a[1]-b[1])
+
+def mag(a, b):
+    vector = vec(a,b)
+    return sqrt(vector[0] ** 2 + vector[1] ** 2)
+
+def ang(a, b):
+    v = vec(a,b)
+    return atan2(v[0], v[1])
 
 import math
 import serial
 
 def open_arduino():
-    ser = serial.Serial('COM7', 9600)
+    ser = serial.Serial(sys.argv[1], 9600)
 
     #wait for arduino to reset
     time.sleep(3)
@@ -37,7 +50,7 @@ center_thresh = 50
 
 # close enough to center
 def closecent(centerx,centery,x,y):
-    return abs(y - centery) < center_thresh and abs(x - centerx) < center_thresh:
+    return abs(y - centery) < center_thresh and abs(x - centerx) < center_thresh
     
 widthfactor = 0.1
 
@@ -197,25 +210,36 @@ while True:
         
         # Calculate our motion vector!!
         try:
-            motion = best_center - blob_hist[-1]
-            print motion
+            magnitude = mag(best_center, blob_hist[-1])
+            angle = ang(best_center, blob_hist[-1])
+            angle = degrees(angle)
+            print "M:   ", magnitude
+            print "Ang: ", angle
         except Exception, e:
-            print e
+            #raise
             print "First loop... No object history"
         
        
         # Add the best point to the history
         blob_hist.append(best_center)
         # Limit the length of the history!!
-        if len(blob_hist) > 500:
+        if len(blob_hist) > 200:
             blob_hist.popleft()
 
         # Draw a line to connect the last point to this point... 
         # Aka Lets do a line!!!!!
         for index in range(len(blob_hist)):
-            cv2.line(img, blob_hist[index-1], blob_hist[index], (255, 0, 0))
+            cv2.line(img, blob_hist[index-1], blob_hist[index], (255, 0, 0), 4)
         
-        print blob_hist
+        x_stuff = [point[0] for point in blob_hist]
+        y_stuff = [point[1] for point in blob_hist]
+        
+        centerx = np.mean(x_stuff)
+        centery = np.mean(y_stuff)
+        
+        width = max(x_stuff)-min(x_stuff)
+        
+        print centerx, centery
         
     except Exception, e:
         #raise
