@@ -29,10 +29,17 @@ long goal_ups = 0; // current goal
 const long max_ups = 1700; // min speed before stopping
 const long min_ups = 500; // max speed
 const long usec_per_ups = 200; // "acceleration?" (usec / (usec/step))
-const long usec_per_ctrl = 100000; // control rate for serial i/o etc
-const long close_pos = 200;
+const long usec_per_ctrl = 50000; // control rate for serial i/o etc
+const long close_pos = 150;
 const long pwr_timeout = 500000; // power save timeout
 long pwr_time_start = 0;
+
+boolean in_num = false;
+int inp_acc = 0; // input accumulator
+int inp = 512; // final input number
+
+boolean man_mode = false;
+boolean pos_mode = true;
 
 void calibrate() {
   int stop1;
@@ -99,12 +106,18 @@ void setup() {
   digitalWrite(dirPin, HIGH);
   digitalWrite(led, LOW);
   digitalWrite(enPin, HIGH); // active low
+  man_mode = false;
+  pos_mode = true;
+  in_num = false;
+  inp_acc = 0;
+  inp = 512;
   Serial.begin(9600);
   // wait for signal to begin
   while(!Serial.available()) ;
-  Serial.println("Let's go!");
+  Serial.println("START!");
   digitalWrite(enPin, LOW); // active low
   calibrate();
+  Serial.println("GO!");
 }
 
 void loop() {
@@ -114,9 +127,49 @@ void loop() {
   // run control i/o
   if(interval_ctrl > usec_per_ctrl) {
     previous_ctrl = current;
-    int potpos = analogRead(potPin);
-    //double goalv = ((potpos - 512)/512.0)*maxv;
-    goalp = (potpos/1024.0)*(stop2Pos-stop1Pos) + stop1Pos;
+    
+    // read out serial commands
+    while(Serial.available()) {
+      char c = Serial.read();
+      //Serial.print(c);
+      
+      if(c == 'm') {
+        man_mode = true;
+        pos_mode = false;
+      } else if(c == 'p') {
+        man_mode = false;
+        pos_mode = true;
+      } else if(c == 'v') {
+        // velocity mode (not implemented yet)
+        man_mode = false;
+        pos_mode = false;
+      } else if(c >= '0' && c <= '9') {
+        in_num = true;
+        inp_acc *= 10;
+        inp_acc += (c-'0');
+      } else if( c == '\n' && in_num) {
+        in_num = false;
+        inp = inp_acc;
+        if(inp > 1023) inp = 1023;
+        inp_acc = 0;
+        //Serial.println(inp);
+      }
+      
+    }
+    
+    int potpos;
+    
+    if(man_mode) {
+      potpos = analogRead(potPin);
+    } else {
+      potpos = inp;
+    }
+    
+    if(pos_mode || man_mode)
+      goalp = (potpos/1024.0)*(stop2Pos-stop1Pos) + stop1Pos;
+    else
+      //double goalv = ((potpos - 512)/512.0)*maxv;
+      ; // velocity mode (not done yet)
 
     //Serial.print(goalp);
     //Serial.print("     ");
