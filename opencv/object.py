@@ -113,7 +113,7 @@ while True:
         # Add the best point to the history
         blob_hist.append(best_center)
         # Limit the length of the history!!
-        if len(blob_hist) > 100:
+        if len(blob_hist) > 500:
             blob_hist.popleft()
 
         # Draw a line to connect the last point to this point... 
