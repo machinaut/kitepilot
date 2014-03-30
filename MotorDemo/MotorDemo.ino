@@ -1,3 +1,5 @@
+#define POWER_SAVE_BS 1
+
 const int led = 4; // onboard debug LED
 int ledState = LOW; // current LED state
 long previous_step = 0; // last time we stepped the motor (us)
@@ -7,7 +9,6 @@ long previous_ctrl = 0; // last time we ran control (us)
 const int dirPin = 3; // direction
 int dirState = LOW;
 const int enPin = 2; // enable
-int enState = LOW;
 
 const int potPin = 0;
 
@@ -17,6 +18,7 @@ const int stop1Pin = 5;
 const int stop2Pin = 6;
 long stop1Pos = 0;
 long stop2Pos = 0;
+boolean got1 = false; // got stop1 first (true means stop1 is positive)
 
 long pos = 0;
 long goalp = 0; 
@@ -24,17 +26,18 @@ long goalp = 0;
 // "ups" stands for "usec per step", basically 1/velocity
 long usec_per_step = 0; // 0 is special and means stop
 long goal_ups = 0; // current goal
-const long max_ups = 1000; // min speed before stopping
+const long max_ups = 1700; // min speed before stopping
 const long min_ups = 500; // max speed
-const long usec_per_ups = 500; // "acceleration?" (usec / (usec/step))
+const long usec_per_ups = 200; // "acceleration?" (usec / (usec/step))
 const long usec_per_ctrl = 100000; // control rate for serial i/o etc
 const long close_pos = 200;
+const long pwr_timeout = 500000; // power save timeout
+long pwr_time_start = 0;
 
 void calibrate() {
   int stop1;
   int stop2;
-  int got1 = false;
-  int got2 = false;
+  got1 = false;
 
   pos = 0; // wherever we start, that's 0
 
@@ -57,7 +60,6 @@ void calibrate() {
   }
   if(stop2) { 
     stop2Pos = pos; 
-    got2 = true; 
     Serial.print("POS2 ");
     Serial.println(pos);
   }
@@ -65,7 +67,7 @@ void calibrate() {
   digitalWrite(dirPin, LOW);
   delay(100);
 
-  while((!stop1 || got1) && (!stop2 || got2)) {
+  while((!stop1 || got1) && (!stop2 || !got1)) {
     delay(1);
     digitalWrite(led, HIGH);
     digitalWrite(led, LOW);
@@ -74,14 +76,13 @@ void calibrate() {
     stop1 = !digitalRead(stop1Pin);
     stop2 = !digitalRead(stop2Pin);
   }
-  if(stop1 && !got1) {
-    stop1Pos = pos;
-    Serial.print("POS1 ");
-    Serial.println(pos);
-  }
-  if(stop2 && !got2) {
+  if(got1) {
     stop2Pos = pos;
     Serial.print("POS2 ");
+    Serial.println(pos);
+  } else {
+    stop1Pos = pos;
+    Serial.print("POS1 ");
     Serial.println(pos);
   }
 
@@ -93,13 +94,16 @@ void setup() {
   pinMode(stop1Pin, INPUT);
   pinMode(stop2Pin, INPUT);
   pinMode(PwrPin, OUTPUT);
+  pinMode(enPin, OUTPUT);
   digitalWrite(PwrPin, HIGH);
   digitalWrite(dirPin, HIGH);
   digitalWrite(led, LOW);
-  pinMode(enPin, OUTPUT);
-  enState = LOW;
-  digitalWrite(enPin, enState);
+  digitalWrite(enPin, HIGH); // active low
   Serial.begin(9600);
+  // wait for signal to begin
+  while(!Serial.available()) ;
+  Serial.println("Let's go!");
+  digitalWrite(enPin, LOW); // active low
   calibrate();
 }
 
@@ -116,11 +120,11 @@ void loop() {
 
     //Serial.print(goalp);
     //Serial.print("     ");
-    Serial.print(pos);
-    Serial.print("     ");
+    //Serial.print(pos);
+    //Serial.print("     ");
     //Serial.print(goal_ups);
     //Serial.print("     ");*/
-    Serial.println(usec_per_step);
+    //Serial.println(usec_per_step);
     //Serial.print("     ");
     //Serial.println("");
   }
@@ -194,10 +198,45 @@ void loop() {
 
     digitalWrite(dirPin, dirState);
   }
-
-  ////Serial.println("STEP");
-
-  ////Serial.println(potpos);
+  
+  // emergency stop!
+  if(!digitalRead(stop1Pin)) {
+    long slip = pos-stop1Pos;
+    if(got1 && slip < 0 || !got1 && slip > 0) {
+      Serial.print("Hit STOP1, slip=");
+      Serial.println(slip);
+      // correct slip
+      pos -= slip;
+    }
+    
+    // disallow movement in bad direction
+    if(got1 && usec_per_step > 0 || !got1 && usec_per_step < 0) {
+      usec_per_step = 0;
+    }
+  }
+  if(!digitalRead(stop2Pin)) {
+    long slip = pos-stop2Pos;
+    if(got1 && slip > 0 || !got1 && slip < 0) {
+      Serial.print("Hit STOP2, slip=");
+      Serial.println(slip);
+      // correct slip
+      pos -= slip;
+    }
+    
+    // disallow movement in bad direction
+    if(got1 && usec_per_step < 0 || !got1 && usec_per_step > 0) {
+      usec_per_step = 0;
+    }
+  }
+  
+  if(POWER_SAVE_BS) {
+    if(usec_per_step == 0) {
+      if(current-pwr_time_start > pwr_timeout) digitalWrite(enPin, HIGH); // active low
+    } else {
+      pwr_time_start = current;
+      digitalWrite(enPin, LOW); // active low
+    }
+  }
 
 }
 
