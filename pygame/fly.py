@@ -35,31 +35,70 @@ def tocent():
 # approx turn rate
 turn = 14.0
 
+angle_thresh = 15.0
+center_thresh = 10
+
+## states:
+## 0 upper right, aim down (cw)
+## 1 lower right, aim to center
+## 2 away from center up left 45 deg
+## 3 upper left, aim down (ccw)
+## 4 lower left, aim to center
+## 5 away from center up right 45 deg
+## please give normalized angle as input
+## outputs angle error
+def next_state(state, x, y, angle):
+    next = state
+    angle_err = 0.
+    
+    if state == 0: # turn right
+        angle_err = -90. - angle #don't normalize, we want the quadrant kink
+        if y < center[1] and abs(angle_err) < angle_thresh:
+            next = 1
+    elif state == 1: #back to center
+        angle_err = norm(tocent() - angle)
+        if abs(y - center[1]) < center_thresh and abs(x - center[0]) < center_thresh:
+            next = 2
+    elif state == 2: #away from center left
+        angle_err = norm(-135 - angle)
+        if x < (center[0] - width * .14):
+            next = 3
+    elif state == 3: #turn left
+        if angle > 0:
+            temp_angle = angle - 360 #move the quadrant kink over
+        else:
+            temp_angle = angle
+        angle_err = -90. - temp_angle #don't normalize, we want the quadrant kink
+        if y < center[1] and abs(angle_err) < angle_thresh:
+            next = 4
+    elif state == 4: #back to center
+        angle_err = norm(tocent() - angle)
+        if abs(y - center[1]) < center_thresh and abs(x - center[0]) < center_thresh:
+            next = 5
+    elif state == 5: #away from center right
+        angle_err = norm(45 - angle)
+        if x > (center[0] - width * .14):
+            next = 0
+    else:
+        next_state = 0
+        goal_angle = -90
+        
+    return (next, angle_err)
+    
+state = 0
+
 # loop until forever. goddamn robots.
 while True:
     fps.tick(60) # go at most 60FPS
     # move forward angle
-    x += int(math.sin(math.radians(angle))*wind)
-    y += int(math.cos(math.radians(angle))*wind)
-    # calculate new angle
-    if x < (center[0] - width * .14): # turn left (left side)
-        if y > center[1]: # upper half
-            angle = max(norm(angle - turn), tocent())
-        else: # lower half
-            if angle > 0: # upwards
-                angle = max(norm(angle - turn), 90)
-            else: # downwards
-                angle = norm(angle - turn)
-    elif x > (center[0] + width * .14): # turn right (right side)
-        if y > center[1]: # upper half
-            angle = max(norm(angle - turn), -90.0)
-        else: # lower half
-            if angle > 0: # upwards
-                angle = min(norm(angle - turn),tocent())
-            else: # downwards
-                angle = norm(angle - turn)
-    else: # x > (center[0] + width * .14)
-        pass
+    x += int(math.cos(math.radians(angle))*wind)
+    y += int(math.sin(math.radians(angle))*wind)
+    state, err = next_state(state, x, y, angle)
+    
+    if err > 0:
+        angle = angle + turn
+    else:
+        angle = angle - turn
 
     # draw the sky
     surface.fill(sky)
@@ -67,3 +106,5 @@ while True:
     # DRAW FROM A BETTER COORDINATE SYSTEM
     pygame.draw.circle(surface, grn, (x, 720-y), 44, 0)
     pygame.display.update()
+    
+    print state, x, y, angle, err, tocent()
