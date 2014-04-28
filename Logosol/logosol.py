@@ -12,6 +12,12 @@ LogosolTxPacket = Struct("TxData",
                          Array(lambda ctx: ctx.datalen, UBInt8("cmd_data")),
                          UBInt8("checksum"))
 
+LogosolRxPacket = Struct("RxData",
+                         UBInt8("length"),  # I am adding this length byte to this string
+                         UBInt8("status"),
+                         Array(lambda ctx: ctx.length, UBInt8("responce")),
+                         UBInt8("checksum"))
+
 LogosolCmds = Enum( Byte("CMD"),
                     reset_pos = 0x00,
                     set_addr  = 0x01,
@@ -27,21 +33,28 @@ LogosolCmds = Enum( Byte("CMD"),
                     clear_stat= 0x0B,
                     save_home = 0x0C,
                     nop       = 0x0D,
-                    nop       = 0x0E,
+                    nop2      = 0x0E,
                     hard_rst  = 0x0F)
 
-
-# Checking that I have put the struct together correctly!!!!
-example_packet = LogosolTxPacket.build(Container(header = 170, address= 3, datalen = 2, cmd = 1, cmd_data = [1,2], checksum = 128))
-
-# Print Hex 
-print map(hex,map(ord,example_packet))
-
 # Low level send function
-def Logosol_Send(addr = 0, cmd = 0, data = []):
+def LogosolSend(addr = 0, cmd = 0, data = []):
     
     # command + nbytes shifted up a nibble makes up the actual command byte
     cksum = addr + (cmd + (nbytes * 16)) + sum(data)
     packet = LogosolTxPacket.build(Conatiner(header=0xAA, address = addr, command = cmd,
                                             cmd_data = data, checksum = cksum))
     
+
+def LogosolParse(rx_data):
+    length = len(rx_data)
+    
+    # The data payload is two bytes less than the length of the packet
+    data_len = length - 2
+    
+    # Add on a char to so array knows how many data bytes to put into the array
+    new_packet = chr(data_len) + rx_data
+    
+    return LogosolRxPacket.parse(new_packet)
+    
+
+

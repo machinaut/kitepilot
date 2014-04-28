@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+!/usr/bin/env python
 # demo.py - draw a demo of the plane flying
 import pygame, math
 
