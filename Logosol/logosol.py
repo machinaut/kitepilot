@@ -44,7 +44,7 @@ def LogosolSend(addr = 0, cmd = 0, data = []):
     packet = LogosolTxPacket.build(Conatiner(header=0xAA, address = addr, command = cmd,
                                             cmd_data = data, checksum = cksum))
     
-
+# Low level recieve function
 def LogosolParse(rx_data):
     length = len(rx_data)
     
@@ -64,6 +64,7 @@ def LogosolParse(rx_data):
     new_packet = chr(data_len) + rx_data
     
     return LogosolRxPacket.parse(new_packet)
-    
+   
+# Test my packet parse function
 print LogosolParse(bytearray([1,2,3,4,5,6,21]))
 
