@@ -48,6 +48,15 @@ def LogosolSend(addr = 0, cmd = 0, data = []):
 def LogosolParse(rx_data):
     length = len(rx_data)
     
+    packet = bytearray(rx_data)
+    #for a in packet: print a
+    
+    lastbyte = packet.pop()
+    checksum = sum(packet)
+
+    if lastbyte != checksum:
+        raise ValueError("The checksum for the recieved data is wrong")
+
     # The data payload is two bytes less than the length of the packet
     data_len = length - 2
     
@@ -56,5 +65,5 @@ def LogosolParse(rx_data):
     
     return LogosolRxPacket.parse(new_packet)
     
-
+print LogosolParse(bytearray([1,2,3,4,5,6,21]))
 
