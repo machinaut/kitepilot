@@ -47,8 +47,6 @@ def LogosolSend(addr = 0, cmd = 'nop', data = []):
     packet = LogosolTxPacket.build(Conatiner(header=0xAA, address = addr, command = cmd,
                                             cmd_data = data, checksum = cksum))
     
-def set
-    
 # Low level recieve function
 def LogosolParse(rx_data):
     length = len(rx_data)
