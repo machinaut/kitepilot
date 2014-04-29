@@ -49,11 +49,11 @@ def LogosolParse(rx_data):
     length = len(rx_data)
     
     packet = bytearray(rx_data)
-    #for a in packet: print a
     
     lastbyte = packet.pop()
     checksum = sum(packet)
-
+    
+    # Check the checksum
     if lastbyte != checksum:
         raise ValueError("The checksum for the recieved data is wrong")
 
