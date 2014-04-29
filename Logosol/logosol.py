@@ -37,12 +37,17 @@ LogosolCmds = Enum( Byte("CMD"),
                     hard_rst  = 0x0F)
 
 # Low level send function
-def LogosolSend(addr = 0, cmd = 0, data = []):
+def LogosolSend(addr = 0, cmd = 'nop', data = []):
+    
+    # Convert the command to the cmd byte
+    cmd = LogosolCmds.build(cmd)
     
     # command + nbytes shifted up a nibble makes up the actual command byte
     cksum = addr + (cmd + (nbytes * 16)) + sum(data)
     packet = LogosolTxPacket.build(Conatiner(header=0xAA, address = addr, command = cmd,
                                             cmd_data = data, checksum = cksum))
+    
+def set
     
 # Low level recieve function
 def LogosolParse(rx_data):
