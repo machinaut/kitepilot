@@ -21,6 +21,8 @@ LogosolTxPacket = Struct("TxData",
                          Array(lambda ctx: ctx.datalen, ULInt8("cmd_data")),
                          ULInt8("checksum"))
 
+# Construct has a feature for doing this. I should change over to their method
+# at some point.
 LogosolRxPacket = Struct("RxData",
                          ULInt8("length"),  # I am adding this length byte to this string
                          ULInt8("status"),
