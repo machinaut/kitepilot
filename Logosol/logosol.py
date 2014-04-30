@@ -82,9 +82,27 @@ def ResetPositionCounter():
     packet = LogosolSend(addr = 0, cmd = 'reset_pos')
     ser.write(packet)
     
-def SetGains(P, I, D, I_lim, Out_lim, Current_lim, Pos_err_lim, Dead_band):
-    pass
-
-# Test my packet parse function
-print LogosolParse(bytearray([1,2,3,4,5,6,21]))
-
+def SetGains(P, V, I, I_lim, Out_lim, Current_lim, Pos_err_lim, Servo_rate_div, Dead_band):
+    data_structure = Struct(ULInt16("P_gain"),
+                            ULInt16("V_gain"),
+                            ULInt16("I_gain"),
+                            ULInt16("Int_lim"),
+                            ILInt8("Out_lim"),
+                            ILInt8("Cur_lim"),
+                            ILInt16("Pos_err_lim"),
+                            ILInt8("Servo_rate_div"),
+                            ILInt8("Dead_band"))
+                            
+    data_array = data_structure.build(P_gain = P,
+                                      V_gain = V,
+                                      I_gain = I,
+                                      Int_lim = I_lim,
+                                      Out_lim = Out_Lim,
+                                      Cur_lim = Current_lim,
+                                      Pos_err_lim = Pos_err_lim,
+                                      Servo_rate_div = Servo_rate_div,
+                                      Dead_band = Dead_band)
+    
+    packet = LogosolSend(addr = 0, cmd = 'set_gain', data = data_array)
+    
+    ser.write(packet)
