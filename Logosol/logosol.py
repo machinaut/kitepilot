@@ -14,18 +14,18 @@ ser = serial.Serial(
 # This is the binary command string as a struct. Other functions use this to assemble their packets.
 # I will make another struct to parse the recieved data.
 LogosolTxPacket = Struct("TxData",
-                         UBInt8("header"),
-                         UBInt8("address"),
+                         ULInt8("header"),
+                         ULInt8("address"),
                          EmbeddedBitStruct( Nibble("datalen"),
                                             Nibble("cmd")),
-                         Array(lambda ctx: ctx.datalen, UBInt8("cmd_data")),
-                         UBInt8("checksum"))
+                         Array(lambda ctx: ctx.datalen, ULInt8("cmd_data")),
+                         ULInt8("checksum"))
 
 LogosolRxPacket = Struct("RxData",
-                         UBInt8("length"),  # I am adding this length byte to this string
-                         UBInt8("status"),
-                         Array(lambda ctx: ctx.length, UBInt8("responce")),
-                         UBInt8("checksum"))
+                         ULInt8("length"),  # I am adding this length byte to this string
+                         ULInt8("status"),
+                         Array(lambda ctx: ctx.length, ULInt8("responce")),
+                         ULInt8("checksum"))
 
 LogosolCmds = Enum( Byte("CMD"),
                     reset_pos = 0x00,
@@ -57,10 +57,6 @@ def LogosolSend(addr = 0, cmd = 'nop', data = []):
                                             cmd_data = data, checksum = cksum))
     return packet
     
-def ResetPositionCounter():
-    
-    
-    
 # Low level recieve function
 def LogosolParse(rx_data):
     length = len(rx_data)
@@ -81,7 +77,14 @@ def LogosolParse(rx_data):
     new_packet = chr(data_len) + rx_data
     
     return LogosolRxPacket.parse(new_packet)
-   
+
+def ResetPositionCounter():
+    packet = LogosolSend(addr = 0, cmd = 'reset_pos')
+    ser.write(packet)
+    
+def SetGains(P, I, D, I_lim, Out_lim, Current_lim, Pos_err_lim, Dead_band):
+    pass
+
 # Test my packet parse function
 print LogosolParse(bytearray([1,2,3,4,5,6,21]))
 
