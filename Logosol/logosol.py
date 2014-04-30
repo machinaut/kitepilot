@@ -1,6 +1,15 @@
 #!/usr/bin/env python
 
 from construct import *
+import serial
+
+ser = serial.Serial(
+    port='/dev/ttyUSB1',
+    baudrate=19200,
+    parity=serial.PARITY_NONE,
+    stopbits=serial.STOPBITS_TWO,
+    bytesize=serial.EIGHTBITS
+)
 
 # This is the binary command string as a struct. Other functions use this to assemble their packets.
 # I will make another struct to parse the recieved data.
@@ -46,6 +55,11 @@ def LogosolSend(addr = 0, cmd = 'nop', data = []):
     cksum = addr + (cmd + (nbytes * 16)) + sum(data)
     packet = LogosolTxPacket.build(Conatiner(header=0xAA, address = addr, command = cmd,
                                             cmd_data = data, checksum = cksum))
+    return packet
+    
+def ResetPositionCounter():
+    
+    
     
 # Low level recieve function
 def LogosolParse(rx_data):
