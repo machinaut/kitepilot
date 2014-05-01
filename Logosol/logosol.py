@@ -9,27 +9,27 @@ class Logosol():
             port = serial_port,
             baudrate=19200,
             parity=serial.PARITY_NONE,
-            stopbits=serial.STOPBITS_TWO,
+            stopbits=serial.STOPBITS_ONE,
             bytesize=serial.EIGHTBITS
             )
 
         # This is the binary command string as a struct. Other functions use this to assemble their packets.
         # I will make another struct to parse the recieved data.
         self.TxPacket = Struct("TxData",
-                               ULInt8("header"),
-                               ULInt8("address"),
+                               UBInt8("header"),
+                               UBInt8("address"),
                                EmbeddedBitStruct( Nibble("datalen"),
                                                   Nibble("cmd")),
                                Array(lambda ctx: ctx.datalen, ULInt8("cmd_data")),
-                               ULInt8("checksum"))
+                               UBInt8("checksum"))
 
         # Construct has a feature for doing this. I should change over to their method
         # at some point.
         self.RxPacket = Struct("RxData",
-                               ULInt8("length"),  # I am adding this length byte to this string
-                               ULInt8("status"),
-                               Array(lambda ctx: ctx.length, ULInt8("responce")),
-                               ULInt8("checksum"))
+                               UBInt8("length"),  # I am adding this length byte to this string
+                               UBInt8("status"),
+                               Array(lambda ctx: ctx.length, UBInt8("responce")),
+                               UBInt8("checksum"))
         
         # All of the available commands
         self.Cmds = Enum( Byte("CMD"),
@@ -88,15 +88,15 @@ class Logosol():
         
     
     def SetGains(self, P, V, I, I_lim, Out_lim, Current_lim, Pos_err_lim, Servo_rate_div, Dead_band):
-            data_structure = Struct(ULInt16("P_gain"),
-                                    ULInt16("V_gain"),
-                                    ULInt16("I_gain"),
-                                    ULInt16("Int_lim"),
-                                    ILInt8("Out_lim"),
-                                    ILInt8("Cur_lim"),
-                                    ILInt16("Pos_err_lim"),
-                                    ILInt8("Servo_rate_div"),
-                                    ILInt8("Dead_band"))
+            data_structure = Struct(UBInt16("P_gain"),
+                                    UBInt16("V_gain"),
+                                    UBInt16("I_gain"),
+                                    UBInt16("Int_lim"),
+                                    IBInt8("Out_lim"),
+                                    IBInt8("Cur_lim"),
+                                    IBInt16("Pos_err_lim"),
+                                    IBInt8("Servo_rate_div"),
+                                    IBInt8("Dead_band"))
                                     
             data_array = data_structure.build(P_gain = P,
                                               V_gain = V,
