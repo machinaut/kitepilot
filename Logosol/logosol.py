@@ -51,18 +51,20 @@ class Logosol():
                         hard_rst  = 0x0F)
 
     # Low level send function
-    def LogosolSend(self, addr = 0, cmd = 'nop', data = []):
+    def _make_packet(self, addr = 0, cmd = 'nop', data = []):
         # Convert the command to the cmd byte
-        cmd = LogosolCmds.build(cmd)
-    
+        cmd = self.Cmds.build(cmd)
+        
+        nbytes = len(data)
+         
         # command + nbytes shifted up a nibble makes up the actual command byte
-        cksum = addr + (cmd + (nbytes * 16)) + sum(data)
-        packet = LogosolTxPacket.build(Conatiner(header=0xAA, address = addr, command = cmd,
+        cksum = addr + (cmd + (nbytes * 16)) + bytearray([sum(data)])
+        packet = self.TxPacket.build(Conatiner(header=0xAA, address = addr, command = cmd,
                                                 cmd_data = data, checksum = cksum))
         return packet
         
     # Low level recieve function
-    def LogosolParse(self, rx_data):
+    def _parse_packet(self, rx_data):
         length = len(rx_data)
         
         packet = bytearray(rx_data)
@@ -77,13 +79,15 @@ class Logosol():
         # The data payload is two bytes less than the length of the packet
         data_len = length - 2
         
+        # TODO: Replace this extra char with the proper construct way of having
+        # variable length data fields!!!
         # Add on a char to so array knows how many data bytes to put into the array
         new_packet = chr(data_len) + rx_data
         
-        return LogosolRxPacket.parse(new_packet)
+        return self.RxPacket.parse(new_packet)
 
     def ResetPositionCounter(self):
-        packet = LogosolSend(addr = 0, cmd = 'reset_pos')
+        packet = self._make_packet(addr = 0, cmd = 'reset_pos')
         ser.write(packet)
         
     
@@ -108,9 +112,13 @@ class Logosol():
                                               Servo_rate_div = Servo_rate_div,
                                               Dead_band = Dead_band)
             
-            packet = LogosolSend(addr = 0, cmd = 'set_gain', data = data_array)
+            packet = _make_packet(addr = 0, cmd = 'set_gain', data = data_array)
             
             ser.write(packet)
 
 
+    def send_reset(self):
+        packet = self._make_packet(addr = 0, cmd = 'nop')
+        ser.write(packet)
+        
 
