@@ -59,7 +59,7 @@ class Logosol():
          
         # command + nbytes shifted up a nibble makes up the actual command byte
         cksum = addr + (cmd + (nbytes * 16)) + bytearray([sum(data)])
-        packet = self.TxPacket.build(Conatiner(header=0xAA, address = addr, command = cmd,
+        packet = self.TxPacket.build(Container(header=0xAA, address = addr, command = cmd,
                                                 cmd_data = data, checksum = cksum))
         return packet
         
