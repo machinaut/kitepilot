@@ -3,6 +3,7 @@
 import os
 import sys
 import logosol
+import time
 
 if len(sys.argv) != 2:
     print "Provide the serial device as the first and only arguement!"
@@ -11,8 +12,9 @@ if len(sys.argv) != 2:
 
 mc = logosol.Logosol(serial_port = sys.argv[1])
 
-mc.send_reset()
-res = mc.ser.read()
+res = mc.send_reset()
+#res = mc.ser.read(size=5)
 
+print 'Response:'
 for a in res:
-    print hex(a)
+    print hex(ord(a))

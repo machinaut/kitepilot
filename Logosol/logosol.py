@@ -2,12 +2,15 @@
 
 from construct import *
 import serial
+import pdb
+import time
 
 class Logosol():
     def __init__(self, serial_port = None):
-        ser = serial.Serial(
+        self.ser = serial.Serial(
             port = serial_port,
             baudrate=19200,
+            timeout = 0.5,
             parity=serial.PARITY_NONE,
             stopbits=serial.STOPBITS_ONE,
             bytesize=serial.EIGHTBITS
@@ -58,9 +61,10 @@ class Logosol():
         nbytes = len(data)
          
         # command + nbytes shifted up a nibble makes up the actual command byte
-        cksum = addr + (cmd + (nbytes * 16)) + bytearray([sum(data)])
-        packet = self.TxPacket.build(Container(header=0xAA, address = addr, command = cmd,
-                                                cmd_data = data, checksum = cksum))
+        cksum = (addr + ord(cmd) + (nbytes * 16) + sum(data)) & 0xFF
+        packet = self.TxPacket.build(Container(header=170, address = addr,
+                                     datalen = nbytes, cmd = ord(cmd),
+                                     cmd_data = data, checksum = cksum))
         return packet
         
     # Low level recieve function
@@ -88,7 +92,7 @@ class Logosol():
 
     def ResetPositionCounter(self):
         packet = self._make_packet(addr = 0, cmd = 'reset_pos')
-        ser.write(packet)
+        self.ser.write(packet)
         
     
     def SetGains(self, P, V, I, I_lim, Out_lim, Current_lim, Pos_err_lim, Servo_rate_div, Dead_band):
@@ -114,11 +118,32 @@ class Logosol():
             
             packet = _make_packet(addr = 0, cmd = 'set_gain', data = data_array)
             
-            ser.write(packet)
+            self.ser.write(packet)
 
+    
+    def SetTrajectory(self, pos = None, vel = None, acc = None, PWM = None,
+                            mode = "PWM", profile = "TRAP", start = False):
+         
 
     def send_reset(self):
-        packet = self._make_packet(addr = 0, cmd = 'nop')
-        ser.write(packet)
+        packet = self._make_packet(addr = 0, cmd = 'nop') 
+        print 'Command:'
+        self.print_hex(packet)
+        # Clear the RX buffer so that we only get the response for this command
+        # back.
+        self.ser.flushInput() 
+        # Write our packet out
+        self.ser.write(packet)
         
+        while self.ser.inWaiting() == 0:
+            time.sleep(0.1)
+        
+        chars = self.ser.inWaiting()
+        RXdata = self.ser.read(size=chars)
+        return RXdata
 
+        
+    def print_hex(self, data):
+        for c in data:
+            print hex(ord(c)),
+        print '\n'
