@@ -119,65 +119,77 @@ class Logosol():
             packet = _make_packet(addr = 0, cmd = 'set_gain', data = data_array)
             
             self.ser.write(packet)
-   
+
+    
     def SetTrajectory(self, pos = None, vel = None, acc = None, PWM = None,
                             mode = "PWM", profile = "TRAP", start = False):
-        ndatabytes = 0
-        if pos not None:
-            pos_set = 1
-            # Servo Mode
-            servo_mode = 1
-            ndatabytes += 4
-        else:
-            pos_set = 0
-            # PWM Mode
-            servo_mode = 0
 
-        if vel not None:
-            # Setting velocity 
-            vel_set = 1
-            ndatabytes += 4	
-        else:
-            # Not Setting Velocity
-            vel_set = 0
+	# Start at one (for the control byte!)
+	ndatabytes = 1
+	if pos not None:
+		pos_set = 1
+		# Servo Mode
+		servo_mode = 1
+		ndatabytes += 4
+	else:
+		pos_set = 0
+		# PWM Mode
+		servo_mode = 0
 
-        if acc not None:
-            # Set Acceleration
-            acc_set = 1
-            ndatabytes += 4
-        else:
-            # Not Setting Acceleration
-            acc_set = 0
+	if vel not None:
+		# Setting velocity 
+		vel_set = 1
+		ndatabytes += 4	
+	else:
+		# Not Setting Velocity
+		vel_set = 0
 
-        if PWM not None:
-            PWM_set = 1
-            # PWM Mode
-            servo_mode = 0
-            ndatabytes += 1
-        else:
-            PWM_set = 0
-            # Position Servo
-            servo_MODE = 1
-        
-        
-        control_byte = BitStruct('control',
-                     BitField('pos'),
-                     BitField('vel'),
-                     BitField('acc'),
-                     BitField('pwm'),
-                     BitField('servo'),
-                     BitField('profile'),
-                     BitField('vel/pwm'),
-                     BitField('start?'))
+	if acc not None:
+		# Set Acceleration
+		acc_set = 1
+		ndatabytes += 4
+	else:
+		# Not Setting Acceleration
+		acc_set = 0
 
-        control = control_byte.build(pos = pos_set, vel = vel_set, acc = acc_set, pwm = PWM_set,
-                         
-        
-        trajectory_struct = Struct()#TODO: fill this structure in!!!
-        # Use the macro "Optional" in order to leave data secions in or out. Set the
-        # unused datatypes to None, and they corresponding bytes will be left
-        # out of the resulting string!
-        
+	if PWM not None:
+		PWM_set = 1
+		# PWM Mode
+		servo_mode = 0
+		ndatabytes += 1
+	else:
+		PWM_set = 0
+		# Position Servo
+		servo_MODE = 1
+	
+	# This byte tells the Logosol what is being set, and the # of data bytes to expect
+	control_byte = BitStruct('control',
+				 BitField('pos'),
+				 BitField('vel'),
+				 BitField('acc'),
+				 BitField('pwm'),
+				 BitField('servo'),
+				 BitField('profile'),
+				 BitField('vel_pwm'),
+				 BitField('start?'))
+
+	control_data = control_byte.build(pos = pos_set, vel = vel_set, acc = acc_set, pwm = PWM_set, vel_pwm = servo_mode, start = start)
+				     
+	# Put the command data into a struct.
+	# The optional macros will leave out all of their data if the value to build is None.
+	trajectory_struct = Struct(Optional(UBInt32('Position')),
+				   Optional(UBInt32('Velocity')),
+				   Optional(UBInt32('Acceleration')),
+				   Optional(UBInt8('PWM')))
+	
+	trajectory_data = trajectory_struct.build(Position = pos, Velocity = vel, Acceleration = acc, PWM = PWM)
+	
+	
+	# The control byte + trajectory bytes = the data bytes
+	data = control_data + trajectory_data
+	
+	# Make a packet out of all this stuff
+	packet = self._make_packet(addr = 0, cmd = 'load_traj', data = data)
 	
 	
 
@@ -196,7 +208,7 @@ class Logosol():
         
         chars = self.ser.inWaiting()
         RXdata = self.ser.read(size=chars)
-        return RXdata
+        return RXdatad
 
         
     def print_hex(self, data):
