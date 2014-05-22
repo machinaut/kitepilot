@@ -119,64 +119,65 @@ class Logosol():
             packet = _make_packet(addr = 0, cmd = 'set_gain', data = data_array)
             
             self.ser.write(packet)
-
-    
+   
     def SetTrajectory(self, pos = None, vel = None, acc = None, PWM = None,
                             mode = "PWM", profile = "TRAP", start = False):
-	ndatabytes = 0
-	if pos not None:
-		pos_set = 1
-		# Servo Mode
-		servo_mode = 1
-		ndatabytes += 4
-	else:
-		pos_set = 0
-		# PWM Mode
-		servo_mode = 0
+        ndatabytes = 0
+        if pos not None:
+            pos_set = 1
+            # Servo Mode
+            servo_mode = 1
+            ndatabytes += 4
+        else:
+            pos_set = 0
+            # PWM Mode
+            servo_mode = 0
 
-	if vel not None:
-		# Setting velocity 
-		vel_set = 1
-		ndatabytes += 4	
-	else:
-		# Not Setting Velocity
-		vel_set = 0
+        if vel not None:
+            # Setting velocity 
+            vel_set = 1
+            ndatabytes += 4	
+        else:
+            # Not Setting Velocity
+            vel_set = 0
 
-	if acc not None:
-		# Set Acceleration
-		acc_set = 1
-		ndatabytes += 4
-	else:
-		# Not Setting Acceleration
-		acc_set = 0
+        if acc not None:
+            # Set Acceleration
+            acc_set = 1
+            ndatabytes += 4
+        else:
+            # Not Setting Acceleration
+            acc_set = 0
 
-	if PWM not None:
-		PWM_set = 1
-		# PWM Mode
-		servo_mode = 0
-		ndatabytes += 1
-	else:
-		PWM_set = 0
-		# Position Servo
-		servo_MODE = 1
-	
-	
-	control_byte = BitStruct('control',
-				 BitField('pos'),
-				 BitField('vel'),
-				 BitField('acc'),
-				 BitField('pwm'),
-				 BitField('servo'),
-				 BitField('profile'),
-				 BitField('vel/pwm'),
-				 BitField('start?'))
+        if PWM not None:
+            PWM_set = 1
+            # PWM Mode
+            servo_mode = 0
+            ndatabytes += 1
+        else:
+            PWM_set = 0
+            # Position Servo
+            servo_MODE = 1
+        
+        
+        control_byte = BitStruct('control',
+                     BitField('pos'),
+                     BitField('vel'),
+                     BitField('acc'),
+                     BitField('pwm'),
+                     BitField('servo'),
+                     BitField('profile'),
+                     BitField('vel/pwm'),
+                     BitField('start?'))
 
-	control = control_byte.build(pos = pos_set, vel = vel_set, acc = acc_set, pwm = PWM_set,
-				     
-	
-	trajectory_struct = Struct()#TODO: fill this structure in!!!
-	#Use the flag element inside of a bitstruct or something to make the whole control byte out of our flags
-	
+        control = control_byte.build(pos = pos_set, vel = vel_set, acc = acc_set, pwm = PWM_set,
+                         
+        
+        trajectory_struct = Struct()#TODO: fill this structure in!!!
+        # Use the macro "Optional" in order to leave data secions in or out. Set the
+        # unused datatypes to None, and they corresponding bytes will be left
+        # out of the resulting string!
+        
 	
 	
 
