@@ -123,7 +123,9 @@ class Logosol():
     
     def SetTrajectory(self, pos = None, vel = None, acc = None, PWM = None,
                             mode = "PWM", profile = "TRAP", start = False):
-	ndatabytes = 0
+
+	# Start at one (for the control byte!)
+	ndatabytes = 1
 	if pos not None:
 		pos_set = 1
 		# Servo Mode
@@ -160,7 +162,7 @@ class Logosol():
 		# Position Servo
 		servo_MODE = 1
 	
-	
+	# This byte tells the Logosol what is being set, and the # of data bytes to expect
 	control_byte = BitStruct('control',
 				 BitField('pos'),
 				 BitField('vel'),
@@ -168,15 +170,26 @@ class Logosol():
 				 BitField('pwm'),
 				 BitField('servo'),
 				 BitField('profile'),
-				 BitField('vel/pwm'),
+				 BitField('vel_pwm'),
 				 BitField('start?'))
 
-	control = control_byte.build(pos = pos_set, vel = vel_set, acc = acc_set, pwm = PWM_set,
+	control_data = control_byte.build(pos = pos_set, vel = vel_set, acc = acc_set, pwm = PWM_set, vel_pwm = servo_mode, start = start)
 				     
+	# Put the command data into a struct.
+	# The optional macros will leave out all of their data if the value to build is None.
+	trajectory_struct = Struct(Optional(UBInt32('Position')),
+				   Optional(UBInt32('Velocity')),
+				   Optional(UBInt32('Acceleration')),
+				   Optional(UBInt8('PWM')))
 	
-	trajectory_struct = Struct()#TODO: fill this structure in!!!
-	#Use the flag element inside of a bitstruct or something to make the whole control byte out of our flags
+	trajectory_data = trajectory_struct.build(Position = pos, Velocity = vel, Acceleration = acc, PWM = PWM)
 	
+	
+	# The control byte + trajectory bytes = the data bytes
+	data = control_data + trajectory_data
+	
+	# Make a packet out of all this stuff
+	packet = self._make_packet(addr = 0, cmd = 'load_traj', data = data)
 	
 	
 
@@ -195,7 +208,7 @@ class Logosol():
         
         chars = self.ser.inWaiting()
         RXdata = self.ser.read(size=chars)
-        return RXdata
+        return RXdatad
 
         
     def print_hex(self, data):
