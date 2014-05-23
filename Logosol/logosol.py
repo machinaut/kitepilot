@@ -74,7 +74,7 @@ class Logosol():
         packet = bytearray(rx_data)
         
         lastbyte = packet.pop()
-        checksum = sum(packet)
+        checksum = sum(packet) & 0xFF
         
         # Check the checksum
         if lastbyte != checksum:
@@ -89,7 +89,27 @@ class Logosol():
         new_packet = chr(data_len) + rx_data
         
         return self.RxPacket.parse(new_packet)
+	
+	
+    def _logosol_rw(self, data):
+	# Clear the RX buffer
+	self.ser.flushInput()
+	
+	#Write the data
+	self.ser.write(data)
+	
+	# Wait for at least 10ms, just in case the logosol is busy
+	time.sleep(0.010)
+	
+	# Get the number of bytes available
+	nBytes = self.ser.inWaiting()
 
+	# Read back the available bytes
+	rxData = self.ser.read(nBytes)
+	
+	# We should parse the response here!!!
+	return rxData
+	
     def ResetPositionCounter(self):
         packet = self._make_packet(addr = 0, cmd = 'reset_pos')
         self.ser.write(packet)
@@ -191,27 +211,20 @@ class Logosol():
 	# Make a packet out of all this stuff
 	packet = self._make_packet(addr = 0, cmd = 'load_traj', data = data)
 	
+	# Write da packet
+	self._logosol_rw(packet)
 	
-
     def send_reset(self):
         packet = self._make_packet(addr = 0, cmd = 'nop') 
         print 'Command:'
         self.print_hex(packet)
-        # Clear the RX buffer so that we only get the response for this command
-        # back.
-        self.ser.flushInput() 
-        # Write our packet out
-        self.ser.write(packet)
-        
-        while self.ser.inWaiting() == 0:
-            time.sleep(0.1)
-        
-        chars = self.ser.inWaiting()
-        RXdata = self.ser.read(size=chars)
-        return RXdatad
-
+	
+	# Write da packet
+	return self._logosol_rw(packet)
         
     def print_hex(self, data):
         for c in data:
             print hex(ord(c)),
         print '\n'
+
+
