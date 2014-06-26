@@ -6,6 +6,12 @@ import pdb
 import time
 
 class Logosol():
+    #Define status bits for use with a couple of methods
+    (STATUS_POSITION, STATUS_A/D,
+    STATUS_VELOCITY, STATUS_AUX, 
+    STATUS_HOME, STATUS_ID,
+    STATUS_POSITION_ERROR) = (0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40)
+ 
     def __init__(self, serial_port = None):
         self.ser = serial.Serial(
             port = serial_port,
@@ -53,7 +59,7 @@ class Logosol():
                         nop2      = 0x0E,
                         hard_rst  = 0x0F)
 
-    # Low level send function
+    # Low level send packet assembly function
     def _make_packet(self, addr = 0, cmd = 'nop', data = []):
         # Convert the command to the cmd byte
         cmd = self.Cmds.build(cmd)
@@ -67,12 +73,13 @@ class Logosol():
                                      cmd_data = data, checksum = cksum))
         return packet
         
-    # Low level recieve function
+    # Low level recieve packet parsing function
     def _parse_packet(self, rx_data):
         length = len(rx_data)
         
         packet = bytearray(rx_data)
         
+        # Remove the checksum so we can check it
         lastbyte = packet.pop()
         checksum = sum(packet) & 0xFF
         
@@ -90,137 +97,176 @@ class Logosol():
         
         return self.RxPacket.parse(new_packet)
 	
-	
+	# This method actually sends and recieves the data
     def _logosol_rw(self, data):
-	# Clear the RX buffer
-	self.ser.flushInput()
-	
-	#Write the data
-	self.ser.write(data)
-	
-	# Wait for at least 10ms, just in case the logosol is busy
-	time.sleep(0.010)
-	
-	# Get the number of bytes available
-	nBytes = self.ser.inWaiting()
+        # Clear the RX buffer
+        self.ser.flushInput()
 
-	# Read back the available bytes
-	rxData = self.ser.read(nBytes)
-	
-	# We should parse the response here!!!
-	return rxData
-	
+        #Write the data
+        self.ser.write(data)
+
+        # Wait for at least 10ms, just in case the logosol is busy
+        time.sleep(0.010)
+
+        # Get the number of bytes available
+        nBytes = self.ser.inWaiting()
+
+        # Read back the available bytes
+        rxData = self.ser.read(nBytes)
+
+        # We should parse the response here!!!
+        return rxData
+
     def ResetPositionCounter(self):
         packet = self._make_packet(addr = 0, cmd = 'reset_pos')
-        self.ser.write(packet)
-        
+        self._logosol_rw(packet) 
     
     def SetGains(self, P, V, I, I_lim, Out_lim, Current_lim, Pos_err_lim, Servo_rate_div, Dead_band):
-            data_structure = Struct(UBInt16("P_gain"),
-                                    UBInt16("V_gain"),
-                                    UBInt16("I_gain"),
-                                    UBInt16("Int_lim"),
-                                    IBInt8("Out_lim"),
-                                    IBInt8("Cur_lim"),
-                                    IBInt16("Pos_err_lim"),
-                                    IBInt8("Servo_rate_div"),
-                                    IBInt8("Dead_band"))
-                                    
-            data_array = data_structure.build(P_gain = P,
-                                              V_gain = V,
-                                              I_gain = I,
-                                              Int_lim = I_lim,
-                                              Out_lim = Out_Lim,
-                                              Cur_lim = Current_lim,
-                                              Pos_err_lim = Pos_err_lim,
-                                              Servo_rate_div = Servo_rate_div,
-                                              Dead_band = Dead_band)
+        data_structure = Struct(UBInt16("P_gain"),
+                                UBInt16("V_gain"),
+                                UBInt16("I_gain"),
+                                UBInt16("Int_lim"),
+                                IBInt8("Out_lim"),
+                                IBInt8("Cur_lim"),
+                                IBInt16("Pos_err_lim"),
+                                IBInt8("Servo_rate_div"),
+                                IBInt8("Dead_band"))
+                                
+        data_array = data_structure.build(P_gain = P,
+                                          V_gain = V,
+                                          I_gain = I,
+                                          Int_lim = I_lim,
+                                          Out_lim = Out_Lim,
+                                          Cur_lim = Current_lim,
+                                          Pos_err_lim = Pos_err_lim,
+                                          Servo_rate_div = Servo_rate_div,
+                                          Dead_band = Dead_band)
+        
+        packet = _make_packet(addr = 0, cmd = 'set_gain', data = data_array)
             
-            packet = _make_packet(addr = 0, cmd = 'set_gain', data = data_array)
-            
-            self.ser.write(packet)
-
-    
+        self._logosol_rw(packet)
+         
     def SetTrajectory(self, pos = None, vel = None, acc = None, PWM = None,
                             mode = "PWM", profile = "TRAP", start = False):
 
-	# Start at one (for the control byte!)
-	ndatabytes = 1
-	if pos not None:
-		pos_set = 1
-		# Servo Mode
-		servo_mode = 1
-		ndatabytes += 4
-	else:
-		pos_set = 0
-		# PWM Mode
-		servo_mode = 0
+        # Start at one (for the control byte!)
+        ndatabytes = 1
+        if pos not None:
+            pos_set = 1
+            # Servo Mode
+            servo_mode = 1
+            ndatabytes += 4
+        else:
+            pos_set = 0
+            # PWM Mode
+            servo_mode = 0
 
-	if vel not None:
-		# Setting velocity 
-		vel_set = 1
-		ndatabytes += 4	
-	else:
-		# Not Setting Velocity
-		vel_set = 0
+        if vel not None:
+            # Setting velocity 
+            vel_set = 1
+            ndatabytes += 4	
+        else:
+            # Not Setting Velocity
+            vel_set = 0
 
-	if acc not None:
-		# Set Acceleration
-		acc_set = 1
-		ndatabytes += 4
-	else:
-		# Not Setting Acceleration
-		acc_set = 0
+        if acc not None:
+            # Set Acceleration
+            acc_set = 1
+            ndatabytes += 4
+        else:
+            # Not Setting Acceleration
+            acc_set = 0
 
-	if PWM not None:
-		PWM_set = 1
-		# PWM Mode
-		servo_mode = 0
-		ndatabytes += 1
-	else:
-		PWM_set = 0
-		# Position Servo
-		servo_MODE = 1
-	
-	# This byte tells the Logosol what is being set, and the # of data bytes to expect
-	control_byte = BitStruct('control',
-				 BitField('pos'),
-				 BitField('vel'),
-				 BitField('acc'),
-				 BitField('pwm'),
-				 BitField('servo'),
-				 BitField('profile'),
-				 BitField('vel_pwm'),
-				 BitField('start?'))
+        if PWM not None:
+            PWM_set = 1
+            # PWM Mode
+            servo_mode = 0
+            ndatabytes += 1
+        else:
+            PWM_set = 0
+            # Position Servo
+            servo_MODE = 1
 
-	control_data = control_byte.build(pos = pos_set, vel = vel_set, acc = acc_set, pwm = PWM_set, vel_pwm = servo_mode, start = start)
-				     
-	# Put the command data into a struct.
-	# The optional macros will leave out all of their data if the value to build is None.
-	trajectory_struct = Struct(Optional(UBInt32('Position')),
-				   Optional(UBInt32('Velocity')),
-				   Optional(UBInt32('Acceleration')),
-				   Optional(UBInt8('PWM')))
-	
-	trajectory_data = trajectory_struct.build(Position = pos, Velocity = vel, Acceleration = acc, PWM = PWM)
-	
-	
-	# The control byte + trajectory bytes = the data bytes
-	data = control_data + trajectory_data
-	
-	# Make a packet out of all this stuff
-	packet = self._make_packet(addr = 0, cmd = 'load_traj', data = data)
-	
-	# Write da packet
-	self._logosol_rw(packet)
-	
+        # This byte tells the Logosol what is being set, and the # of data bytes to expect
+        control_byte = BitStruct('control',
+                       BitField('pos'),
+                       BitField('vel'),
+                       BitField('acc'),
+                       BitField('pwm'),
+                       BitField('servo'),
+                       BitField('profile'),
+                       BitField('vel_pwm'),
+                       BitField('start?'))
+
+        control_data = control_byte.build(pos = pos_set, vel = vel_set, acc = acc_set, pwm = PWM_set, vel_pwm = servo_mode, start = start)
+                         
+        # Put the command data into a struct.
+        # The optional macros will leave out all of their data if the value to build is None.
+        trajectory_struct = Struct(Optional(UBInt32('Position')),
+                                   Optional(UBInt32('Velocity')),
+                                   Optional(UBInt32('Acceleration')),
+                                   Optional(UBInt8('PWM')))
+
+        trajectory_data = trajectory_struct.build(Position = pos, Velocity = vel, Acceleration = acc, PWM = PWM)
+
+
+        # The control byte + trajectory bytes = the data bytes
+        data = control_data + trajectory_data
+
+        # Make a packet out of all this stuff
+        packet = self._make_packet(addr = 0, cmd = 'load_traj', data = data)
+
+        # Write da packet
+        self._logosol_rw(packet)
+
+    def read_status(self, status_items):
+        # Status items should be a list where each element is one of the status
+        # items defined in this class. (ex. [Logosol.STATUS_POSITION, ... ])
+
+        # OR all of the elements in the list together
+        status_tmp = 0
+        for flag in status_items:
+            status_tmp |= flag
+       
+        # calculate the number of total bytes we need to get back
+        nbytes = 0
+        for i, n in enumerate([4, 1, 2, 1, 4, 2, 2]
+            b = 0x01 << i
+            if status_tmp & b:
+                nbytes += n
+        
+        packet = self._make_packet(addr = 0, cmd = 'read_stat', data = status_byte)
+        
+        # Everything in the responce packet is conditional. 
+        status_data = Struct("StatusBytes",
+                             If(lambda ctx: status_tmp & 0x01,
+                             IBInt32("Position")),
+
+                             If(lambda ctx: status_tmp & 0x02,
+                             UBInt8("A/D_Reading")),
+
+                             If(lambda ctx: status_tmp & 0x04,
+                             UBInt16("Velocity")),
+
+                             If(lambda ctx: status_tmp & 0x08,
+                             UBInt8("Aux_Byte")),
+
+                             If(lambda ctx: status_tmp & 0x10,
+                             UBInt32("Home_Pos")),
+
+                             If(lambda ctx: status_tmp & 0x20,  
+                             UBInt16("Device_ID")),
+
+                             If(lambda ctx: status_tmp & 0x40
+                             UBInt16("Pos_Err")))
+
     def send_reset(self):
         packet = self._make_packet(addr = 0, cmd = 'nop') 
         print 'Command:'
         self.print_hex(packet)
 	
-	# Write da packet
-	return self._logosol_rw(packet)
+	    # Write da packet
+	    return self._logosol_rw(packet)
         
     def print_hex(self, data):
         for c in data:
