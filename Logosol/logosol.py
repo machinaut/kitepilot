@@ -115,7 +115,7 @@ class Logosol():
         rxData = self.ser.read(nBytes)
 
         # We should parse the response here!!!
-        return rxData
+	return rxData
 
     def ResetPositionCounter(self):
         packet = self._make_packet(addr = 0, cmd = 'reset_pos')
@@ -230,7 +230,7 @@ class Logosol():
        
         # calculate the number of total bytes we need to get back
         nbytes = 0
-        for i, n in enumerate([4, 1, 2, 1, 4, 2, 2]
+        for i, n in enumerate([4, 1, 2, 1, 4, 2, 2])
             b = 0x01 << i
             if status_tmp & b:
                 nbytes += n
@@ -259,6 +259,10 @@ class Logosol():
 
                              If(lambda ctx: status_tmp & 0x40
                              UBInt16("Pos_Err")))
+    
+	resp = self._logosol_rw(packet)
+	
+	
 
     def send_reset(self):
         packet = self._make_packet(addr = 0, cmd = 'nop') 
